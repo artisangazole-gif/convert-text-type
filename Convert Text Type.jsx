@@ -1,68 +1,132 @@
-/**
- * Convert Text Type
- * Adobe Illustrator script to convert Point text to Area text and vice versa.
- *
- * To install the script, place this file into the following folder:
- * Windows: C:\Program Files\Adobe\Adobe Illustrator [version]\Presets\Scripts
- * Mac: Applications/Adobe Illustrator [version]/Presets/Scripts
- *
- * Note: Depending on the application version and language, folder names may
- * be localized and the path may also include a region directory (e.g. en_US).
- *
- * @author Martin Holler
- * @version 1.0
- * @license MIT
- */
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
-#target illustrator
+export default function ShopWebsite() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [password, setPassword] = useState("");
 
-(function () {
-    'use strict';
+  const defaultData = {
+    "Glass Beads": [],
+    "Acrylic Beads": [],
+    "Findings & Charms": [],
+    "Tassels & Elastic": [],
+    "Cotton Balls": [],
+    "Pom Pom Balls": [],
+    "Kadi": []
+  };
 
-    var AREAMAXWIDTH = 300;
+  const [items, setItems] = useState(() => {
+    const saved = localStorage.getItem("shopItems");
+    return saved ? JSON.parse(saved) : defaultData;
+  });
 
-    var _each = function (array, callback) {
-        var i, len;
+  useEffect(() => {
+    localStorage.setItem("shopItems", JSON.stringify(items));
+  }, [items]);
 
-        if (typeof callback === 'function') {
-            for (i = 0, len = array.length; i < len; i++) {
-                callback(array[i], i);
-            }
-        }
-    };
+  const [newItem, setNewItem] = useState({
+    name: "",
+    description: "",
+    category: "Glass Beads",
+    image: ""
+  });
 
-    try {
-        if (app.documents.length) {
-            _each(app.selection, function (item) {
-
-                // check if the selected item is a text object and is either point or area text (ignore path text)
-                if (item.typename === 'TextFrame' && (item.kind === TextType.POINTTEXT || item.kind === TextType.AREATEXT)) {
-                    var layer = item.layer;
-                    var textObject;
-                    var boundingBox;
-
-                    // if this is point text, create an area text object
-                    if (item.kind === TextType.POINTTEXT) {
-                        boundingBox = layer.pathItems.rectangle(item.top, item.left, item.width > AREAMAXWIDTH ? AREAMAXWIDTH : item.width, item.height);
-                        textObject = layer.textFrames.areaText(boundingBox);
-
-                    // if this is area text, create a point text object
-                    } else {
-                        textObject = layer.textFrames.pointText(item.position);
-                    }
-
-                    // move the contents of the original item to the new text object and then delete the original item
-                    item.textRange.move(textObject, ElementPlacement.PLACEATEND);
-                    textObject.position = item.position; // text positioning may be off after the content was moved, so reset it
-                    item.remove();
-
-                    // select the new text object
-                    textObject.selected = false; // the element must be deselected first
-                    textObject.selected = true;
-                }
-            });
-        }
-    } catch (err) {
-        alert('Oops, something went wrong ...\n' + err + '\nLine: ' + err.line);
+  const handleLogin = () => {
+    if (password === "admin123") {
+      setIsAdmin(true);
+    } else {
+      alert("Wrong password");
     }
-}(app));
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewItem({ ...newItem, image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const addItem = () => {
+    if (!newItem.name) return;
+    setItems({
+      ...items,
+      [newItem.category]: [...items[newItem.category], newItem]
+    });
+    setNewItem({ name: "", description: "", category: "Glass Beads", image: "" });
+  };
+
+  const deleteItem = (category, index) => {
+    const updated = { ...items };
+    updated[category].splice(index, 1);
+    setItems(updated);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">THE ARTISAN ~ Fashion N Beads</h1>
+        <nav className="space-x-4">
+          <a href="#products">Materials</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </header>
+
+      <section className="text-center mb-10">
+        <motion.h2
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl font-semibold mb-4"
+        >
+          All Jewelry Making Materials in One Place
+        </motion.h2>
+        <p className="text-gray-600">Browse & manage your stock easily</p>
+      </section>
+
+      {/* Admin */}
+      <section className="mb-10">
+        {!isAdmin ? (
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="Admin Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border p-2 rounded"
+            />
+            <Button onClick={handleLogin}>Admin Login</Button>
+          </div>
+        ) : (
+          <div className="bg-white p-4 rounded-xl shadow space-y-2">
+            <h2 className="font-semibold">Add New Item</h2>
+            <input
+              placeholder="Item Name"
+              value={newItem.name}
+              onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+              className="border p-2 rounded w-full"
+            />
+            <input
+              placeholder="Description"
+              value={newItem.description}
+              onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+              className="border p-2 rounded w-full"
+            />
+            <select
+              value={newItem.category}
+              onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+              className="border p-2 rounded w-full"
+            >
+              {Object.keys(items).map((cat) => (
+                <option key={cat}>{cat}</option>
+              ))}
+            </select>
+            <input type="file" onChange={handleImageUpload} />
+            <Button onClick={addItem}>Add Item</Button>
+          </div>
+        )}
+      </section>
